@@ -3,6 +3,7 @@ from openai import AzureOpenAI
 import os
 from dotenv import load_dotenv
 import re
+import json
 
 st.set_page_config(layout="wide")
 
@@ -83,3 +84,33 @@ if user_input:
                 message_placeholder.markdown(full_response)
 
                 st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+with st.sidebar:
+    st.header("Chat Sessions")
+
+    # 1) Load existing sessions into a dictionary (if file exists)
+    sessions_file = "chat_sessions.json"
+    if os.path.exists(sessions_file):
+        with open(sessions_file, "r") as f:
+            all_sessions = json.load(f)
+    else:
+        all_sessions = {}
+
+    # 2) Show a list of saved sessions in a selectbox
+    saved_session_names = list(all_sessions.keys())
+    selected_session = st.selectbox("Select Saved Session", [""] + saved_session_names)
+
+    # 3) Button to load the selected existing session
+    if st.button("Load Selected"):
+        if selected_session:
+            st.session_state.messages = all_sessions[selected_session].copy()
+
+    st.write("---")
+    session_name_input = st.text_input("Session Name to Save")
+    # 4) Button to save the current session under a user-provided name
+    if st.button("Save Current Session"):
+        if session_name_input.strip():
+            all_sessions[session_name_input] = st.session_state.messages
+            with open(sessions_file, "w") as f:
+                json.dump(all_sessions, f)
+            st.success(f"Session saved as '{session_name_input}'")

@@ -1,0 +1,38 @@
+# Code Generation Chat App
+
+This interactive Streamlit application integrates with Azure OpenAI to provide a coding-focused chatbot experience. You can ask questions, generate code snippets, and view colorized code blocks using a chat UI.
+
+## Getting Started
+
+1. Install dependencies:
+    ```
+    pip install -r requirements.txt
+    ```
+2. Create a .env file at the root of this project with your Azure OpenAI credentials (see below).  
+3. Run the Streamlit app:
+    ```
+    streamlit run copilot-app.py
+    ```
+
+## .env File Example
+
+Make a file named .env with the following details:
+
+```
+AZURE_OPENAI_API_KEY=YOUR_API_KEY_HERE
+AZURE_OPENAI_ENDPOINT=https://YOUR_ENDPOINT_NAME.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_O1=deployment_for_model_o1
+AZURE_OPENAI_DEPLOYMENT_O3=deployment_for_model_o3
+AZURE_OPENAI_DEPLOYMENT_GPT45=deployment_for_model_gpt-4.5
+```
+
+Replace each placeholder with your actual Azure OpenAI credentials and deployment names.
+
+## Usage
+
+When you open the browser window, you can:
+1. Edit the system message in the “Edit System Message” expander to customize the assistant’s behavior.
+2. Type your coding question or message in the chat input at the bottom.
+3. Click “Clear Chat” if you want to reset the conversation.
+
+You’ll see a wide layout chat window that streams responses from the Azure OpenAI model in real time.

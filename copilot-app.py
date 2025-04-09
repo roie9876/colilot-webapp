@@ -4,10 +4,13 @@ import os
 from dotenv import load_dotenv
 import re
 import json
-
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.documentintelligence import DocumentIntelligenceClient
 st.set_page_config(layout="wide")
 
 load_dotenv()
+MAX_INPUT_TOKENS = int(os.getenv("AZURE_OPENAI_MAX_INPUT_TOKENS", "200000"))
+MAX_COMPLETION_TOKENS = int(os.getenv("AZURE_OPENAI_MAX_COMPLETION_TOKENS", "100000"))
 
 client = AzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -33,6 +36,51 @@ if "system_message" not in st.session_state:
 
 with st.expander("Edit System Message"):
     st.session_state.system_message = st.text_area("System Message", st.session_state.system_message, height=150)
+
+# --- Begin PDF Upload Section using Azure Document Intelligence ---
+uploaded_pdf = st.file_uploader("Upload a PDF (with images)", type=["pdf"])
+if uploaded_pdf is not None:
+    try:
+        # Read PDF file content bytes
+        pdf_bytes = uploaded_pdf.getvalue()
+        
+        # Setup Azure Document Intelligence Client
+
+        
+        form_recognizer_endpoint = os.getenv("AZURE_FORM_RECOGNIZER_ENDPOINT")
+        form_recognizer_key = os.getenv("AZURE_FORM_RECOGNIZER_KEY")
+        
+        document_intelligence_client = DocumentIntelligenceClient(
+            endpoint=form_recognizer_endpoint,
+            credential=AzureKeyCredential(form_recognizer_key)
+        )
+        
+        # Analyze the document using the prebuilt-layout model
+        poller = document_intelligence_client.begin_analyze_document("prebuilt-layout", body=pdf_bytes)
+        result = poller.result()
+        
+        extracted_text = ""
+        # Extract text from each page's lines in order
+        for page in result.pages:
+            for line in page.lines:
+                extracted_text += line.content + "\n"
+                
+            # Optionally: process tables or mathematical formulas here if needed
+            
+        st.markdown("### Extracted PDF Text")
+        st.text_area("PDF Content", extracted_text, height=200)
+        
+        # Button to trigger PDF analysis via LLM
+        if st.button("Analyze PDF"):
+            if extracted_text.strip() == "":
+                st.error("No text was extracted from the PDF. Please check your document or try another file.")
+            else:
+                pdf_message = "Below is the extracted text from the uploaded PDF for analysis:\n\n" + extracted_text
+                st.session_state.messages.append({"role": "user", "content": pdf_message})
+                st.success("PDF content added to the conversation for analysis.")
+    except Exception as e:
+        st.error("Failed to process PDF using Azure Document Intelligence: " + str(e))
+# --- End PDF Upload Section ---
 
 if st.button("Clear Chat"):
     st.session_state.messages = [{"role": "system", "content": st.session_state.system_message}]
@@ -67,6 +115,8 @@ if user_input:
                 stream = client.chat.completions.create(
                     model=MODEL_DEPLOYMENTS[model_choice],
                     messages=st.session_state.messages,
+                    reasoning_effort="high",
+                    max_completion_tokens=MAX_COMPLETION_TOKENS,
                     stream=True,
                 )
 
